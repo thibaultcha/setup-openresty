@@ -1,0 +1,35 @@
+name: 'OpenResty'
+description: 'Build and install OpenResty'
+inputs:
+  version:
+    description: 'OpenResty version (e.g. 1.19.9.1)'
+    required: true
+  opt:
+    description: './configure [opt...]'
+    default:
+  with-cc:
+    description: 'Compiler (--with-cc)'
+    default:
+  with-cc-opt:
+    description: 'Compiler options (--with-cc-opt)'
+    default: '-g'
+  with-ld-opt:
+    description: 'Linker options (--with-ld-opt)'
+    default:
+  with-debug:
+    description: 'Enable debug build (--with-debug)'
+    type: boolean
+    default: false
+  with-no-pool-patch:
+    description: 'Enable no-pool patch (--with-no-pool-patch)'
+    type: boolean
+    default: false
+  with-openssl-version:
+    description: 'OpenSSL version (e.g. 1.1.1l)'
+    default:
+  with-openssl-opt:
+    description: 'OpenSSL build options (--with-openssl-opt)'
+    default:
+runs:
+  using: 'node12'
+  main: 'index.js'
