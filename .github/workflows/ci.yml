@@ -11,30 +11,61 @@ defaults:
     shell: bash
 
 jobs:
-  tests:
-    name: 'OpenResty test build'
+  sanity:
+    name: 'Test - sanity'
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        #cc: [gcc-8, gcc-9]
         openresty: [1.19.9.1]
-        #debug: [1, 0]
+        cc: [gcc-8, gcc-9]
+        debug: [0, 1]
     steps:
-      #- run: sudo apt-get update && sudo apt-get install -y ${{ matrix.cc }}
+      - run: sudo apt-get update && sudo apt-get install -y ${{ matrix.cc }}
       - uses: actions/checkout@v2
       - name: Build OpenResty
         uses: ./
         with:
           version: ${{ matrix.openresty }}
-          opt: --without-stream # bug: cannot build stream without SSL
+          opt: --without-stream # recent bug: cannot build stream without SSL
+
           with-cc: ${{ matrix.cc }}
           with-debug: ${{ matrix.debug }}
-          with-openssl-version: 1.1.1l
       - name: Test build
         run: |
+          which openresty
+          which nginx
           nginx -V
-          openresty -V
           ldd $(which nginx)
+
+          if nginx -V 2>&1 | head -n 1 | grep -v -q -F "openresty/${{ matrix.openresty }}"; then
+            echo "Nginx build version does not match matrix's (${{ matrix.openresty }})" >&2
+            exit 1
+          fi
+
+          if nginx -V 2>&1 | grep -q -F "built with OpenSSL"; then
+            echo "Nginx build should not have OpenSSL" >&2
+            exit 1
+          fi
+
+          if [[ "${{ matrix.debug }}" == 1 ]]; then
+            if ! (nginx -V 2>&1 | grep -q -F -- "--with-debug"); then
+              echo "Nginx build should have --with-debug" >&2
+              exit 1
+            fi
+          else
+            if nginx -V 2>&1 | grep -q -F -- "--with-debug"; then
+              echo "Nginx build should not have --with-debug" >&2
+              exit 1
+            fi
+          fi
+
+          cc="${{ matrix.cc }}"
+          cc=${cc/-/ }
+          echo $cc
+
+          if ! (nginx -V 2>&1 | grep -q -F -- "built by $cc"); then
+              echo "Nginx build not compiled by requested compiler" >&2
+              exit 1
+          fi
