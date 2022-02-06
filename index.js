@@ -8,7 +8,6 @@ const io = require("@actions/io")
 
 const OPENRESTY_HOST="https://openresty.org"
 const OPENSSL_HOST="https://www.openssl.org"
-const OPENSSL_PATCH_VER="1.1.1f"
 const DIR_WORK = path.join(process.env.GITHUB_WORKSPACE, "work")
 const DIR_BUILD = path.join(DIR_WORK, "build")
 const DIR_DOWNLOADS = path.join(DIR_WORK, "downloads")
@@ -47,10 +46,14 @@ async function download(name, url, version) {
         }
 
     } else {
-        core.info(`Reusing downloaded artifact at ${dir}`)
+        core.info(`Reusing downloaded artifact at ${src}`)
     }
 
-    return src
+    let cpy = path.join(DIR_WORK, name)
+
+    await io.cp(src, cpy, { recursive: true, force: true })
+
+    return cpy
 }
 
 async function build_openssl(openssl_src, openssl) {
@@ -59,17 +62,17 @@ async function build_openssl(openssl_src, openssl) {
         `--prefix=${openssl_prefix}`,
         `--openssldir=${openssl_prefix}/openssl`,
         "-g",
-        "shared",
+        "no-shared",
         "no-threads",
         "-DPURIFY"]
 
-    if (openssl.min == 1) {
+    if (openssl.min == "1") {
         /* 1.1.x */
         configure_cmd.push("no-unit-test")
         configure_cmd.push("enable-ssl3")
         configure_cmd.push("enable-ssl3-method")
 
-        if (openssl.patch == 1) {
+        if (openssl.patch == "1") {
             /* 1.1.1 */
             configure_cmd.push("enable-tls1_3")
         }
@@ -79,9 +82,13 @@ async function build_openssl(openssl_src, openssl) {
         configure_cmd.push("no-tests")
     }
 
+    return openssl_prefix
+
+    /*
     await sh(configure_cmd.join(" "), { cwd: openssl_src })
     await sh(`make -j${NPROC}`, { cwd: openssl_src })
     await sh("make install_sw", { cwd: openssl_src })
+    */
 }
 
 async function build_openresty(openresty_src, openresty_version, openssl_src) {
@@ -157,6 +164,8 @@ async function main() {
             return core.setFailed(`Unsupported OpenSSL version: ${openssl_version}`)
         }
 
+        /* 1.x.x */
+
         let openssl = arr.groups
         openssl.version = arr[0]
 
@@ -164,18 +173,77 @@ async function main() {
         openssl_src = await download("OpenSSL", openssl_url, openssl_version).catch()
 
         try {
-            core.info(`Applying OpenSSL patch version ${OPENSSL_PATCH_VER}`)
+            let patch_ver
 
-            let openssl_patch_url = `https://raw.githubusercontent.com/openresty/openresty/master/patches/openssl-${OPENSSL_PATCH_VER}-sess_set_get_cb_yield.patch`
-            let openssl_patch  = await download("openssl-patch", openssl_patch_url, OPENSSL_PATCH_VER)
+            switch (openssl.min) {
+                case "0":
+                    /* 1.0.2 */
+                    patch_ver = "1.0.2h"
+                    break;
 
-            sh(`patch --forward -p1 < ${openssl_patch}`, { cwd: openssl_src })
+                case "1":
+                    if (openssl.patch == "0") {
+                        if (!openssl.suffix || openssl.suffix <= "c") {
+                            /* <= 1.1.0c */
+                            patch_ver = "1.1.0c"
+
+                        } else if (openssl.suffix < "j") {
+                            /* >= 1.1.0d */
+                            patch_ver = "1.1.0d"
+
+                        } else {
+                            /* >= 1.1.0j */
+                            patch_ver = "1.1.0j"
+                        }
+
+                        break;
+                    }
+
+                    if (!openssl.suffix || openssl.suffix < "c") {
+                        /* 1.1.1 */
+                        break;
+
+                    } else if (openssl.suffix == "c") {
+                        /* 1.1.1c */
+                        patch_ver = "1.1.1c"
+
+                    } else if (openssl.suffix == "d") {
+                        /* 1.1.1d */
+                        patch_ver = "1.1.1d"
+
+                    } else if (openssl.suffix == "e") {
+                        /* 1.1.1e */
+                        patch_ver = "1.1.1e"
+
+                    } else {
+                        /* 1.1.1f */
+                        patch_ver = "1.1.1f"
+                    }
+
+                default:
+                    break;
+            }
+
+            if (patch_ver === undefined) {
+                throw(`version ${openssl.version} does not have a compatible patch`)
+            }
+
+            core.info(`Applying OpenSSL patch version ${patch_ver}`)
+
+            let openssl_patch_url = `https://raw.githubusercontent.com/openresty/openresty/master/patches/openssl-${patch_ver}-sess_set_get_cb_yield.patch`
+            let openssl_patch  = await download("openssl-patch", openssl_patch_url, patch_ver)
+
+            await sh(`patch --forward -p1 < ${openssl_patch}`, { cwd: openssl_src })
 
         } catch (e) {
             core.warning(`Failed applying OpenSSL patch: ${e}`)
 
         } finally  {
-            await build_openssl(openssl_src, openssl).catch()
+            if (openssl.maj == "1" && openssl.min == "0"
+                && fs.existsSync(path.join(openssl_src, "Makefile"))) {
+                /* 1.0.2 bug */
+                fs.unlinkSync(path.join(openssl_src, "Makefile"))
+            }
         }
     }
 
