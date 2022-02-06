@@ -49,43 +49,74 @@ async function download(name, url, version) {
         core.info(`Reusing downloaded artifact at ${dir}`)
     }
 
-    core.debug(`Artifact stored at ${src}`)
-
     return src
+}
+
+async function build_openssl(openssl_src, openssl) {
+    let openssl_prefix = path.join(process.env.GITHUB_WORKSPACE, "openssl", openssl.version)
+    let configure_cmd = ["./config",
+        `--prefix=${openssl_prefix}`,
+        `--openssldir=${openssl_prefix}/openssl`,
+        "-g",
+        "shared",
+        "no-threads",
+        "-DPURIFY"]
+
+    if (openssl.min == 1) {
+        /* 1.1.x */
+        configure_cmd.push("no-unit-test")
+        configure_cmd.push("enable-ssl3")
+        configure_cmd.push("enable-ssl3-method")
+
+        if (openssl.patch == 1) {
+            /* 1.1.1 */
+            configure_cmd.push("enable-tls1_3")
+        }
+
+    } else {
+        /* 1.0.x */
+        configure_cmd.push("no-tests")
+    }
+
+    await sh(configure_cmd.join(" "), { cwd: openssl_src })
+    await sh(`make -j${nproc}`, { cwd: openssl_src })
+    await sh("make install_sw", { cwd: openssl_src })
 }
 
 async function main() {
     let nproc = cpus().length
-
-    /* OpenSSL */
-
     let openssl_src
     let openssl_version = core.getInput("with-openssl-version")
 
     if (openssl_version) {
-        /* 1.1.1 only */
-        let arr = /1\.1\.(?:\d\.?){1}/.exec(openssl_version)
-        if (!arr) {
+
+        /* OpenSSL */
+
+        let arr = openssl_version.match(/(?<semver>(?<maj>\d)\.(?<min>\d)(?:\.(?<patch>\d))?)-?(?<suffix>\S*)/)
+        if (!arr || arr.groups.maj != 1) {
             return core.setFailed(`Unsupported OpenSSL version: ${openssl_version}`)
         }
 
-        let digits = arr[0]
-        let openssl_url = `${OPENSSL_HOST}/source/old/${digits}/openssl-${openssl_version}.tar.gz`
+        let openssl = arr.groups
+        openssl.version = arr[0]
+
+        let openssl_url = `${OPENSSL_HOST}/source/old/${openssl.semver}/openssl-${openssl.version}.tar.gz`
         openssl_src = await download("OpenSSL", openssl_url, openssl_version).catch()
 
-        let openssl_patch_url = `https://raw.githubusercontent.com/openresty/openresty/master/patches/openssl-${OPENSSL_PATCH_VER}-sess_set_get_cb_yield.patch`
-        let openssl_patch  = await download("openssl-patch", openssl_patch_url, OPENSSL_PATCH_VER).catch()
+        try {
+            core.info(`Applying OpenSSL patch version ${OPENSSL_PATCH_VER}`)
 
-        await sh(`patch --forward -p1 < ${openssl_patch}`, { cwd: openssl_src }).catch()
+            let openssl_patch_url = `https://raw.githubusercontent.com/openresty/openresty/master/patches/openssl-${OPENSSL_PATCH_VER}-sess_set_get_cb_yield.patch`
+            let openssl_patch  = await download("openssl-patch", openssl_patch_url, OPENSSL_PATCH_VER)
 
-        /*
-        let openssl_prefix = path.join(process.env.GITHUB_WORKSPACE, "openssl", openssl_version)
-        let configure_cmd = ["./config", "shared", `--prefix=${openssl_prefix}`]
+            sh(`patch --forward -p1 < ${openssl_patch}`, { cwd: openssl_src })
 
-        await sh(configure_cmd.join(" "), { cwd: openssl_src }).catch()
-        await sh(`make -j${nproc}`, { cwd: openssl_src }).catch()
-        await sh("make install_sw", { cwd: openssl_src }).catch()
-        */
+        } catch (e) {
+            core.warning(`Failed applying OpenSSL patch: ${e}`)
+
+        } finally  {
+            build_openssl(openssl_src, openssl).catch()
+        }
     }
 
     /* OpenResty */
