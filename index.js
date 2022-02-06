@@ -190,6 +190,8 @@ async function main() {
 
     core.addPath(path.join(`${openresty_prefix}`, "bin"))
     core.addPath(path.join(`${openresty_prefix}`, "nginx", "sbin"))
+
+    core.setOutput("OPENRESTY_PREFIX", openresty_prefix)
 }
 
 main().catch(err => {
