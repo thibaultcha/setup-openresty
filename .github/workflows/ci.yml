@@ -21,8 +21,13 @@ jobs:
         openresty: [1.19.9.1]
         cc: [gcc-8, gcc-9]
         debug: [0, 1]
+        include:
+          - os: macos-latest
+            openresty: 1.19.9.1
+            cc: clang
     steps:
-      - run: sudo apt-get update && sudo apt-get install -y ${{ matrix.cc }}
+      - if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.cc }}
       - uses: actions/checkout@v2
       - name: Build OpenResty
         uses: ./
@@ -37,7 +42,10 @@ jobs:
           which openresty
           which nginx
           nginx -V
-          ldd $(which nginx)
+
+          if [ -x "$(command -v ldd)" ]; then
+            ldd $(which nginx)
+          fi
 
           if nginx -V 2>&1 | head -n 1 | grep -v -q -F "openresty/${{ matrix.openresty }}"; then
             echo "Nginx build version does not match matrix's (${{ matrix.openresty }})" >&2
@@ -61,11 +69,12 @@ jobs:
             fi
           fi
 
-          cc="${{ matrix.cc }}"
-          cc=${cc/-/ }
-          echo $cc
+          if [[ -n "${{ matrix.cc }}" ]]; then
+            cc="${{ matrix.cc }}"
+            cc=${cc/-/ }
 
-          if ! (nginx -V 2>&1 | grep -q -F -- "built by $cc"); then
+            if ! (nginx -V 2>&1 | grep -q -F -- "built by $cc"); then
               echo "Nginx build not compiled by requested compiler" >&2
               exit 1
+            fi
           fi
