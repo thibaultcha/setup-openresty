@@ -131,7 +131,7 @@ jobs:
       - name: Checkout lua-resty lib
         uses: actions/checkout@v2
         with:
-          repository: thibaultcha/lua-resty-jit-uuid
+          repository: openresty/lua-resty-lrucache
           path: lua-resty-lib
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v2
