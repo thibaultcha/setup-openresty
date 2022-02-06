@@ -12,7 +12,7 @@ defaults:
 
 jobs:
   sanity:
-    name: 'Test - sanity'
+    name: 'Test - Sanity'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -25,6 +25,7 @@ jobs:
           - os: macos-latest
             openresty: 1.19.9.1
             cc: clang
+            no-pool: true
     steps:
       - if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y ${{ matrix.cc }}
@@ -34,9 +35,9 @@ jobs:
         with:
           version: ${{ matrix.openresty }}
           opt: --without-stream # recent bug: cannot build stream without SSL
-
           with-cc: ${{ matrix.cc }}
           with-debug: ${{ matrix.debug }}
+          with-no-pool-patch: ${{ matrix.no-pool }}
       - name: Test build
         run: |
           which openresty
@@ -47,7 +48,7 @@ jobs:
             ldd $(which nginx)
           fi
 
-          if nginx -V 2>&1 | head -n 1 | grep -v -q -F "openresty/${{ matrix.openresty }}"; then
+          if nginx -V 2>&1 | head -1 | grep -v -q -F "openresty/${{ matrix.openresty }}"; then
             echo "Nginx build version does not match matrix's (${{ matrix.openresty }})" >&2
             exit 1
           fi
@@ -77,4 +78,44 @@ jobs:
               echo "Nginx build not compiled by requested compiler" >&2
               exit 1
             fi
+          fi
+
+  openssl:
+    name: 'Test - OpenSSL'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        openresty: [1.19.9.1]
+        openssl: [1.0.2u, 1.1.1l]
+        include:
+          - os: macos-latest
+            openresty: 1.19.9.1
+            openssl: 1.1.1l
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build OpenResty
+        uses: ./
+        with:
+          version: ${{ matrix.openresty }}
+          with-openssl-version: ${{ matrix.openssl }}
+      - name: Test build
+        run: |
+          which openresty
+          which nginx
+          nginx -V
+
+          if [ -x "$(command -v ldd)" ]; then
+            ldd $(which nginx)
+          fi
+
+          if ! (nginx -V 2>&1 | grep -q -F "built with OpenSSL"); then
+            echo "Nginx have OpenSSL" >&2
+            exit 1
+          fi
+
+          if ! (nginx -V 2>&1 | head -3 | grep -q -F "built with OpenSSL ${{ matrix.openssl }}"); then
+            echo "Nginx built linked to wrong OpenSSL version" >&2
+            exit 1
           fi
