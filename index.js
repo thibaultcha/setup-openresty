@@ -12,6 +12,7 @@ const OPENSSL_PATCH_VER="1.1.1f"
 const DIR_WORK = path.join(process.env.GITHUB_WORKSPACE, "work")
 const DIR_BUILD = path.join(DIR_WORK, "build")
 const DIR_DOWNLOADS = path.join(DIR_WORK, "downloads")
+const NPROC = cpus().length
 
 function getBoolInput(name, opts) {
     let v = core.getInput(name, opts)
@@ -79,12 +80,71 @@ async function build_openssl(openssl_src, openssl) {
     }
 
     await sh(configure_cmd.join(" "), { cwd: openssl_src })
-    await sh(`make -j${nproc}`, { cwd: openssl_src })
+    await sh(`make -j${NPROC}`, { cwd: openssl_src })
     await sh("make install_sw", { cwd: openssl_src })
 }
 
+async function build_openresty(openresty_src, openresty_version, openssl_src) {
+    let configure_opt = core.getInput("opt")
+    let with_cc = core.getInput("with-cc")
+    let with_cc_opt = core.getInput("with-cc-opt")
+    let with_ld_opt = core.getInput("with-ld-opt")
+    let with_debug = getBoolInput("with-debug")
+    let with_no_pool = getBoolInput("with-no-pool-patch")
+    let with_openssl_opt = core.getInput("with-openssl-opt")
+
+    let openresty_prefix = path.join(process.env.GITHUB_WORKSPACE, "openresty", openresty_version)
+    let configure_cmd = [`./configure`,
+                         `--builddir=${DIR_BUILD}`,
+                         `--prefix=${openresty_prefix}`,
+                         `-j${NPROC}`]
+
+    if (with_cc) {
+        configure_cmd.push(`--with-cc=${with_cc}`)
+    }
+
+    if (with_cc_opt) {
+        configure_cmd.push(`--with-cc-opt="${with_cc_opt}"`)
+    }
+
+    if (with_ld_opt) {
+        configure_cmd.push(`--with-ld-opt="${with_ld_opt}"`)
+    }
+
+    if (configure_opt) {
+        configure_cmd.push(configure_opt)
+    }
+
+    if (with_debug) {
+        configure_cmd.push("--with-debug")
+    }
+
+    if (with_no_pool) {
+        configure_cmd.push("--with-no-pool-patch")
+    }
+
+    if (openssl_src) {
+        configure_cmd.push(`--with-openssl=${openssl_src}`)
+
+        if (with_openssl_opt) {
+            configure_cmd.push(`--with-openssl-opt=${with_openssl_opt}`)
+        }
+
+    } else {
+        core.info("with-openssl-version not supplied, building without SSL")
+
+        configure_cmd.push("--without-stream_ssl_module")
+        configure_cmd.push("--without-http_ssl_module")
+    }
+
+    await sh(configure_cmd.join(" "), { cwd: openresty_src }).catch()
+    await sh(`make -j${NPROC}`, { cwd: openresty_src }).catch()
+    await sh("make install", { cwd: openresty_src }).catch()
+
+    return openresty_prefix
+}
+
 async function main() {
-    let nproc = cpus().length
     let openssl_src
     let openssl_version = core.getInput("with-openssl-version")
 
@@ -115,71 +175,16 @@ async function main() {
             core.warning(`Failed applying OpenSSL patch: ${e}`)
 
         } finally  {
-            build_openssl(openssl_src, openssl).catch()
+            await build_openssl(openssl_src, openssl).catch()
         }
     }
 
     /* OpenResty */
 
     let openresty_version = core.getInput("version", { required: true })
-    let configure_opt = core.getInput("opt")
-    let with_cc = core.getInput("with-cc")
-    let with_cc_opt = core.getInput("with-cc-opt")
-    let with_ld_opt = core.getInput("with-ld-opt")
-    let with_debug = getBoolInput("with-debug")
-    let with_no_pool = getBoolInput("with-no-pool-patch")
-    let with_openssl_opt = core.getInput("with-openssl-opt")
-
     let openresty_url = `${OPENRESTY_HOST}/download/openresty-${openresty_version}.tar.gz`
     let openresty_src = await download("OpenResty", openresty_url, openresty_version).catch()
-
-    let openresty_prefix = path.join(process.env.GITHUB_WORKSPACE, "openresty", openresty_version)
-    let configure_cmd = [`./configure`,
-                         `--builddir=${DIR_BUILD}`,
-                         `--prefix=${openresty_prefix}`,
-                         `-j${nproc}`]
-
-    if (with_cc) {
-        configure_cmd.push(`--with-cc=${with_cc}`)
-    }
-
-    if (with_cc_opt) {
-        configure_cmd.push(`--with-cc-opt="${with_cc_opt}"`)
-    }
-
-    if (with_ld_opt) {
-        configure_cmd.push(`--with-ld-opt="${with_ld_opt}"`)
-    }
-
-    if (configure_opt) {
-        configure_cmd.push(configure_opt)
-    }
-
-    if (with_debug) {
-        configure_cmd.push("--with-debug")
-    }
-
-    if (with_no_pool) {
-        configure_cmd.push("--with-no-pool-patch")
-    }
-
-    if (openssl_version) {
-        configure_cmd.push(`--with-openssl=${openssl_src}`)
-
-        if (with_openssl_opt) {
-            configure_cmd.push(`--with-openssl-opt=${with_openssl_opt}`)
-        }
-
-    } else {
-        core.info("with-openssl-version not supplied, building without SSL")
-
-        configure_cmd.push("--without-stream_ssl_module")
-        configure_cmd.push("--without-http_ssl_module")
-    }
-
-    await sh(configure_cmd.join(" "), { cwd: openresty_src }).catch()
-    await sh(`make -j${nproc}`, { cwd: openresty_src }).catch()
-    await sh("make install", { cwd: openresty_src }).catch()
+    let openresty_prefix = await build_openresty(openresty_src, openresty_version, openssl_src).catch()
 
     /* $PATH */
 
