@@ -11,6 +11,7 @@ const OPENSSL_HOST="https://www.openssl.org"
 const DIR_WORK = path.join(process.env.GITHUB_WORKSPACE, "work")
 const DIR_BUILD = path.join(DIR_WORK, "build")
 const DIR_DOWNLOADS = path.join(DIR_WORK, "downloads")
+const DIR_CPAN = path.join(DIR_WORK, "lib", "cpanm")
 const NPROC = cpus().length
 
 function getBoolInput(name, opts) {
@@ -25,6 +26,7 @@ async function sh(cmd, opts = {}) {
 }
 
 async function download(name, url, version) {
+    await io.mkdirP(DIR_WORK)
     let src = tc.find(name, version)
 
     if (!src) {
@@ -40,9 +42,8 @@ async function download(name, url, version) {
             src = await tc.cacheDir(tar, name, version)
 
         } else {
-            let filename = path.parse(url).base
-            src = await tc.cacheFile(dl, filename, name, version)
-            src = path.join(src, filename)
+            src = await tc.cacheFile(dl, name, name, version)
+            src = path.join(src, name)
         }
 
     } else {
@@ -51,7 +52,7 @@ async function download(name, url, version) {
 
     let cpy = path.join(DIR_WORK, name)
 
-    await io.cp(src, cpy, { recursive: true, force: true })
+    await io.cp(src, cpy, { recursive: true, force: false })
 
     return cpy
 }
@@ -254,12 +255,30 @@ async function main() {
     let openresty_src = await download("OpenResty", openresty_url, openresty_version).catch()
     let openresty_prefix = await build_openresty(openresty_src, openresty_version, openssl_src).catch()
 
-    /* $PATH */
+    let test_nginx = getBoolInput("test-nginx")
+    if (test_nginx) {
+
+        /* Test::Nginx */
+
+        await io.mkdirP(DIR_CPAN).catch()
+
+        let cpanm_src = await download("cpanm", "https://cpanmin.us", "0.0.0").catch()
+        await sh(`chmod +x ${cpanm_src}`).catch()
+
+        await sh(`${cpanm_src} --notest --local-lib=${DIR_CPAN} local::lib`).catch()
+        await sh(`${cpanm_src} --notest --local-lib=${DIR_CPAN} Test::Nginx`).catch()
+        await sh(`${cpanm_src} --notest --local-lib=${DIR_CPAN} IPC::Run`).catch()
+        await sh(`${cpanm_src} --notest --local-lib=${DIR_CPAN} IPC::Run3`).catch()
+    }
+
+    /* Out */
 
     core.addPath(path.join(`${openresty_prefix}`, "bin"))
     core.addPath(path.join(`${openresty_prefix}`, "nginx", "sbin"))
 
     core.setOutput("OPENRESTY_PREFIX", openresty_prefix)
+
+    core.exportVariable("PERL5LIB", path.join(DIR_CPAN, "lib", "perl5"))
 }
 
 main().catch(err => {
