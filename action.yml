@@ -30,6 +30,10 @@ inputs:
   with-openssl-opt:
     description: 'OpenSSL build options (--with-openssl-opt)'
     default:
+  test-nginx:
+    description: 'Install Test::Nginx'
+    type: boolean
+    default: true
 runs:
   using: 'node12'
   main: 'index.js'

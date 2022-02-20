@@ -116,6 +116,29 @@ jobs:
           fi
 
           if ! (nginx -V 2>&1 | head -3 | grep -q -F "built with OpenSSL ${{ matrix.openssl }}"); then
-            echo "Nginx built linked to wrong OpenSSL version" >&2
+            echo "Nginx build linked to wrong OpenSSL version" >&2
             exit 1
           fi
+
+  lib:
+    name: 'lua-resty lib'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        openresty: [1.19.9.1]
+    steps:
+      - name: Checkout lua-resty lib
+        uses: actions/checkout@v2
+        with:
+          repository: thibaultcha/lua-resty-jit-uuid
+          path: lua-resty-lib
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v2
+      - name: Build OpenResty
+        uses: ./
+        with:
+          version: ${{ matrix.openresty }}
+          opt: --without-stream
+      - run: prove -r
+        working-directory: lua-resty-lib
