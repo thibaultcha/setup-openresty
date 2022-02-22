@@ -128,17 +128,17 @@ jobs:
         os: [ubuntu-latest]
         openresty: [1.19.9.1]
     steps:
-      - name: Checkout lua-resty lib
-        uses: actions/checkout@v2
-        with:
-          repository: openresty/lua-resty-lrucache
-          path: lua-resty-lib
-          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v2
       - name: Build OpenResty
         uses: ./
         with:
           version: ${{ matrix.openresty }}
           opt: --without-stream
+      - name: Checkout lua-resty lib
+        uses: actions/checkout@v2
+        with:
+          repository: openresty/lua-resty-lrucache
+          path: lua-resty-lib
+          token: ${{ secrets.GITHUB_TOKEN }}
       - run: prove -r
         working-directory: lua-resty-lib
