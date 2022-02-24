@@ -87,12 +87,12 @@ async function build_openssl(openssl_src, openssl) {
 
 async function build_openresty(openresty_src, openresty_version, openssl_src) {
     let configure_opt = core.getInput("opt")
-    let with_cc = core.getInput("with-cc")
-    let with_cc_opt = core.getInput("with-cc-opt")
-    let with_ld_opt = core.getInput("with-ld-opt")
-    let with_debug = core.getBooleanInput("with-debug")
-    let with_no_pool = core.getBooleanInput("with-no-pool-patch")
-    let with_openssl_opt = core.getInput("with-openssl-opt")
+    let with_cc = core.getInput("cc")
+    let with_cc_opt = core.getInput("cc-opt")
+    let with_ld_opt = core.getInput("ld-opt")
+    let with_debug = core.getBooleanInput("debug")
+    let with_no_pool = core.getBooleanInput("no-pool-patch")
+    let with_openssl_opt = core.getInput("openssl-opt")
 
     let openresty_prefix = path.join(process.env.GITHUB_WORKSPACE, "openresty", openresty_version)
     let configure_cmd = [`./configure`,
@@ -132,7 +132,7 @@ async function build_openresty(openresty_src, openresty_version, openssl_src) {
         }
 
     } else {
-        core.info("with-openssl-version not supplied, building without SSL")
+        core.info("openssl-version not supplied, building without SSL")
 
         configure_cmd.push("--without-stream_ssl_module")
         configure_cmd.push("--without-http_ssl_module")
@@ -147,7 +147,7 @@ async function build_openresty(openresty_src, openresty_version, openssl_src) {
 
 async function main() {
     let openssl_src
-    let openssl_version = core.getInput("with-openssl-version")
+    let openssl_version = core.getInput("openssl-version")
 
     if (openssl_version) {
 
@@ -252,7 +252,7 @@ async function main() {
         openresty_prefix = await build_openresty(openresty_src, openresty_version, openssl_src)
 
     } catch(e) {
-        core.setFailed(`Failed building OpenResty: ${e}`)
+        return core.setFailed(`Failed building OpenResty: ${e}`)
     }
 
     let test_nginx = core.getBooleanInput("test-nginx")
@@ -272,7 +272,7 @@ async function main() {
             await sh(`${cpanm_src} --notest --local-lib=${DIR_CPAN} IPC::Run3`)
 
         } catch(e) {
-            core.setFailed(`Failed installing Test::Nginx: ${e}`)
+            return core.setFailed(`Failed installing Test::Nginx: ${e}`)
         }
     }
 

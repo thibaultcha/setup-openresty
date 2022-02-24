@@ -37,9 +37,9 @@ jobs:
         with:
           version: ${{ matrix.openresty }}
           opt: --without-stream # recent bug: cannot build stream without SSL
-          with-cc: ${{ matrix.cc }}
-          with-debug: ${{ matrix.debug }}
-          with-no-pool-patch: ${{ matrix.no-pool }}
+          cc: ${{ matrix.cc }}
+          debug: ${{ matrix.debug }}
+          no-pool-patch: ${{ matrix.no-pool }}
       - name: Test build
         run: |
           which openresty
@@ -101,7 +101,7 @@ jobs:
         uses: ./
         with:
           version: ${{ matrix.openresty }}
-          with-openssl-version: ${{ matrix.openssl }}
+          openssl-version: ${{ matrix.openssl }}
       - name: Test build
         run: |
           which openresty
