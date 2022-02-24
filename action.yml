@@ -7,27 +7,27 @@ inputs:
   opt:
     description: './configure [opt...]'
     default:
-  with-cc:
+  cc:
     description: 'Compiler (--with-cc)'
     default:
-  with-cc-opt:
+  cc-opt:
     description: 'Compiler options (--with-cc-opt)'
     default: '-g'
-  with-ld-opt:
+  ld-opt:
     description: 'Linker options (--with-ld-opt)'
     default:
-  with-debug:
+  debug:
     description: 'Enable debug build (--with-debug)'
     type: boolean
     default: false
-  with-no-pool-patch:
+  no-pool-patch:
     description: 'Enable no-pool patch (--with-no-pool-patch)'
     type: boolean
     default: false
-  with-openssl-version:
+  openssl-version:
     description: 'OpenSSL version (e.g. 1.1.1l)'
     default:
-  with-openssl-opt:
+  openssl-opt:
     description: 'OpenSSL build options (--with-openssl-opt)'
     default:
   test-nginx:
