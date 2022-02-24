@@ -14,13 +14,6 @@ const DIR_DOWNLOADS = path.join(DIR_WORK, "downloads")
 const DIR_CPAN = path.join(DIR_WORK, "lib", "cpanm")
 const NPROC = cpus().length
 
-function getBoolInput(name, opts) {
-    let v = core.getInput(name, opts)
-    if (v) {
-        return /^\s*(true|1)\s*$/i.test(v)
-    }
-}
-
 async function sh(cmd, opts = {}) {
     await exec.exec("sh", ["-c", `${cmd}`], opts)
 }
@@ -97,8 +90,8 @@ async function build_openresty(openresty_src, openresty_version, openssl_src) {
     let with_cc = core.getInput("with-cc")
     let with_cc_opt = core.getInput("with-cc-opt")
     let with_ld_opt = core.getInput("with-ld-opt")
-    let with_debug = getBoolInput("with-debug")
-    let with_no_pool = getBoolInput("with-no-pool-patch")
+    let with_debug = core.getBooleanInput("with-debug")
+    let with_no_pool = core.getBooleanInput("with-no-pool-patch")
     let with_openssl_opt = core.getInput("with-openssl-opt")
 
     let openresty_prefix = path.join(process.env.GITHUB_WORKSPACE, "openresty", openresty_version)
@@ -262,7 +255,7 @@ async function main() {
         core.setFailed(`Failed building OpenResty: ${e}`)
     }
 
-    let test_nginx = getBoolInput("test-nginx")
+    let test_nginx = core.getBooleanInput("test-nginx")
     if (test_nginx) {
 
         /* Test::Nginx */

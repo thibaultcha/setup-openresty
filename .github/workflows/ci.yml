@@ -20,11 +20,13 @@ jobs:
         os: [ubuntu-latest]
         openresty: [1.19.9.1]
         cc: [gcc-8, gcc-9]
-        debug: [0, 1]
+        debug: [false, true]
+        no-pool: [false]
         include:
           - os: macos-latest
             openresty: 1.19.9.1
             cc: clang
+            debug: true
             no-pool: true
     steps:
       - if: matrix.os == 'ubuntu-latest'
@@ -58,7 +60,7 @@ jobs:
             exit 1
           fi
 
-          if [[ "${{ matrix.debug }}" == 1 ]]; then
+          if [[ "${{ matrix.debug }}" == "true" ]]; then
             if ! (nginx -V 2>&1 | grep -q -F -- "--with-debug"); then
               echo "Nginx build should have --with-debug" >&2
               exit 1
