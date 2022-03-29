@@ -20,7 +20,7 @@ async function setup_openresty(openresty_version) {
     return openresty_src
 }
 
-async function build_openresty(openresty_src, openresty_prefix, openssl_src) {
+async function build_openresty(openresty_version, openresty_src, openresty_prefix, openssl_src) {
     let configure_opt = core.getInput("opt")
     let with_cc = core.getInput("cc")
     let with_cc_opt = core.getInput("cc-opt")
@@ -68,7 +68,28 @@ async function build_openresty(openresty_src, openresty_prefix, openssl_src) {
     } else {
         core.info("openssl-version not supplied, building without SSL")
 
-        configure_cmd.push("--without-stream_ssl_module")
+        let arr = openresty_version.match(/(?<maj>\d+)\.(?<min>\d+)\.(?<patch>\d+)\.(?<suffix>\d+)/)
+        if (!arr) {
+            throw new Error(`Failed parsing OpenResty version (${openresty_version})`)
+        }
+
+        let maj = parseInt(arr.groups.maj, 10)
+        let min = parseInt(arr.groups.min, 10)
+
+        if (maj == 1 && min >= 15) {
+            configure_cmd.push("--without-stream_ssl_module")
+        }
+
+        if (maj == 1 && min >= 13) {
+            /* remove the module entirely, no support without SSL */
+            configure_cmd.push("--without-stream_lua_module")
+        }
+
+        if (maj == 1 && min <= 13) {
+            /* avoid a compilation bug with ngx_libc_crypt */
+            configure_cmd.push("--without-http_auth_basic_module")
+        }
+
         configure_cmd.push("--without-http_ssl_module")
     }
 
