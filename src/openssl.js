@@ -4,31 +4,50 @@ const core = require("@actions/core")
 const { sh, download } = require("./tools")
 
 const OPENSSL_HOST="https://www.openssl.org"
+const GITHUB_HOST="https://github.com"
 
 async function setup_openssl(openssl_version) {
     let arr = openssl_version.match(/(?<semver>(?<maj>\d)\.(?<min>\d)(?:\.(?<patch>\d))?)-?(?<suffix>\S*)/)
-    if (!arr || arr.groups.maj != 1) {
+    if (!arr) {
         return core.setFailed(`Unsupported OpenSSL version: ${openssl_version}`)
     }
-
-    /* 1.x.x */
 
     let openssl = arr.groups
     openssl.version = arr[0]
 
-    let openssl_url = `${OPENSSL_HOST}/source/old/${openssl.semver}/openssl-${openssl.version}.tar.gz`
+    let openssl_url
+
+    switch (openssl.maj) {
+        case "1":
+            openssl_url = `${OPENSSL_HOST}/source/old/${openssl.semver}/openssl-${openssl.version}.tar.gz`
+            break;
+
+        case "3":
+            openssl_url = `${GITHUB_HOST}/openssl/openssl/releases/download/openssl-${openssl.version}/openssl-${openssl.version}.tar.gz`
+            break;
+
+        default:
+            return core.setFailed(`Unsupported OpenSSL version: ${openssl_version}`)
+    }
+
     let openssl_src = await download("OpenSSL", openssl_url, openssl_version)
 
     try {
         let patch_ver
 
-        switch (openssl.min) {
-            case "0":
+        switch (`${openssl.maj}.${openssl.min}`) {
+            case "3.0":
+                /* 3.0.x */
+                patch_ver = openssl.version
+                break;
+
+            case "1.0":
                 /* 1.0.2 */
                 patch_ver = "1.0.2h"
                 break;
 
-            case "1":
+            case "1.1":
+                /* 1.1.0 */
                 if (openssl.patch == "0") {
                     if (!openssl.suffix || openssl.suffix <= "c") {
                         /* <= 1.1.0c */
