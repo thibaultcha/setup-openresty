@@ -4,32 +4,17 @@ const core = require("@actions/core")
 const { sh, download } = require("./tools")
 
 const OPENSSL_HOST="https://www.openssl.org"
-const GITHUB_HOST="https://github.com"
 
 async function setup_openssl(openssl_version) {
     let arr = openssl_version.match(/(?<semver>(?<maj>\d)\.(?<min>\d)(?:\.(?<patch>\d))?)-?(?<suffix>\S*)/)
-    if (!arr) {
+    if (!arr || (arr.groups.maj != 1 && arr.groups.maj != 3)) {
         return core.setFailed(`Unsupported OpenSSL version: ${openssl_version}`)
     }
 
     let openssl = arr.groups
     openssl.version = arr[0]
 
-    let openssl_url
-
-    switch (openssl.maj) {
-        case "1":
-            openssl_url = `${OPENSSL_HOST}/source/old/${openssl.semver}/openssl-${openssl.version}.tar.gz`
-            break;
-
-        case "3":
-            openssl_url = `${GITHUB_HOST}/openssl/openssl/releases/download/openssl-${openssl.version}/openssl-${openssl.version}.tar.gz`
-            break;
-
-        default:
-            return core.setFailed(`Unsupported OpenSSL version: ${openssl_version}`)
-    }
-
+    let openssl_url = `${OPENSSL_HOST}/source/old/${openssl.semver}/openssl-${openssl.version}.tar.gz`
     let openssl_src = await download("OpenSSL", openssl_url, openssl_version)
 
     try {
