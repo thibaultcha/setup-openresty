@@ -93,6 +93,12 @@ jobs:
         openresty: [1.19.9.1]
         openssl: [1.0.2u, 1.1.1l]
         include:
+          - os: ubuntu-latest
+            openresty: 1.27.1.1
+            openssl: 3.0.15
+          - os: macos-latest
+            openresty: 1.27.1.1
+            openssl: 3.0.15
           - os: macos-latest
             openresty: 1.19.9.1
             openssl: 1.1.1l
