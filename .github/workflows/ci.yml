@@ -17,8 +17,10 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        openresty: [1.19.9.1]
-        cc: [gcc-8, gcc-9]
+        openresty:
+          - 1.27.1.1
+          - 1.19.9.1
+        cc: [gcc-12, gcc-14]
         debug: [false, true]
         no-pool: [false]
         include:
@@ -129,7 +131,10 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         openresty:
-          - 1.19.9.1
+          - 1.27.1.1
+          - 1.25.3.2
+          - 1.21.4.4
+          - 1.19.9.2
           - 1.15.8.3
           - 1.13.6.2
           - 1.11.2.5
@@ -161,7 +166,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        openresty: [1.19.9.1]
+        openresty: [1.27.1.1]
     steps:
       - uses: actions/checkout@v2
       - name: Build OpenResty
