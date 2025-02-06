@@ -29,6 +29,14 @@ async function build_openresty(openresty_version, openresty_src, openresty_prefi
     let with_no_pool = core.getBooleanInput("no-pool-patch")
     let with_openssl_opt = core.getInput("openssl-opt")
 
+    let arr = openresty_version.match(/(?<maj>\d+)\.(?<min>\d+)\.(?<patch>\d+)\.(?<suffix>\d+)/)
+    if (!arr) {
+        throw new Error(`Failed parsing OpenResty version (${openresty_version})`)
+    }
+
+    let maj = parseInt(arr.groups.maj, 10)
+    let min = parseInt(arr.groups.min, 10)
+
     let configure_cmd = [`./configure`,
                          `--builddir=${DIR_BUILD}`,
                          `--prefix=${openresty_prefix}`,
@@ -68,14 +76,6 @@ async function build_openresty(openresty_version, openresty_src, openresty_prefi
     } else {
         core.info("openssl-version not supplied, building without SSL")
 
-        let arr = openresty_version.match(/(?<maj>\d+)\.(?<min>\d+)\.(?<patch>\d+)\.(?<suffix>\d+)/)
-        if (!arr) {
-            throw new Error(`Failed parsing OpenResty version (${openresty_version})`)
-        }
-
-        let maj = parseInt(arr.groups.maj, 10)
-        let min = parseInt(arr.groups.min, 10)
-
         if (maj == 1 && min >= 15) {
             configure_cmd.push("--without-stream_ssl_module")
         }
@@ -91,6 +91,11 @@ async function build_openresty(openresty_version, openresty_src, openresty_prefi
         }
 
         configure_cmd.push("--without-http_ssl_module")
+    }
+
+    if (maj == 1 && min < 27) {
+        /* older versions cannot find PCRE on newer hosts */
+        configure_cmd.push("--without-http_rewrite_module")
     }
 
     await sh(configure_cmd.join(" "), { cwd: openresty_src })
