@@ -22,6 +22,9 @@ When successful, this action updates `$PATH` to include the `nginx` binary at
 `$OPENRESTY_PREFIX/nginx/sbin/nginx` and the `openresty` symlink at
 `$OPENRESTY_PREFIX/bin/openresty`.
 
+The resulting OpenResty build will only include OpenSSL if the `openssl-version`
+input is given.
+
 It also installs the
 [Test::Nginx::Socket](https://metacpan.org/pod/Test%3A%3ANginx%3A%3ASocket)
 framework via [cpanminus](https://github.com/miyagawa/cpanminus) and updates
@@ -38,7 +41,7 @@ Name                    |  Type  | Default | Description
 `ld-opt`                | string |         | Linker options (`--with-ld-opt`)
 `debug`                 | bool   | `false` | Enable debug build (`--with-debug`)
 `no-pool-patch`         | bool   | `false` | Enable no-pool patch (`--with-no-pool-patch`)
-`openssl-version`       | string |         | OpenSSL version (e.g. `1.1.1l`)
+`openssl-version`       | string |         | Build with OpenSSL version (e.g. `1.1.1l`)
 `openssl-opt`           | string |         | OpenSSL build options (`--with-openssl-opt`)
 `test-nginx`            | bool   | `true`  | Install Test::Nginx CPAN module
 
