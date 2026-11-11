@@ -18,6 +18,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         openresty:
+          - 1.31.8.1
           - 1.27.1.1
           - 1.19.9.1
         cc: [gcc-12, gcc-14]
@@ -90,7 +91,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        openresty: [1.27.1.1]
+        openresty: [1.31.8.1]
         openssl: [3.0.15, 3.1.8, 3.2.4, 3.3.3, 3.4.1]
         include:
           - os: ubuntu-latest
@@ -137,6 +138,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         openresty:
+          - 1.31.8.1
           - 1.27.1.1
           - 1.25.3.2
           - 1.21.4.4
@@ -172,7 +174,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        openresty: [1.27.1.1]
+        openresty: [1.31.8.1]
     steps:
       - uses: actions/checkout@v4
       - name: Build OpenResty
