@@ -94,8 +94,11 @@ async function build_openresty(openresty_version, openresty_src, openresty_prefi
     }
 
     if (maj == 1 && min < 27) {
-        /* older versions cannot find PCRE on newer hosts */
-        configure_cmd.push("--without-http_rewrite_module")
+        /* PCRE is only enabled when the rewrite module is enabled, and
+         * lua-resty-core requires the ngx_http_lua_ffi_pcre_version symbol
+         * which is only compiled when PCRE is: force PCRE usage so that
+         * ngx.re works and resty.core loads */
+        configure_cmd.push("--with-pcre")
     }
 
     await sh(configure_cmd.join(" "), { cwd: openresty_src })
