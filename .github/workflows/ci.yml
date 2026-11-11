@@ -32,7 +32,7 @@ jobs:
     steps:
       - if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y ${{ matrix.cc }}
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Build OpenResty
         uses: ./
         with:
@@ -103,7 +103,7 @@ jobs:
             openresty: 1.19.9.1
             openssl: 1.0.2u
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Build OpenResty
         uses: ./
         with:
@@ -145,7 +145,7 @@ jobs:
           - 1.13.6.2
           - 1.11.2.5
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Build OpenResty
         uses: ./
         with:
@@ -174,14 +174,14 @@ jobs:
         os: [ubuntu-latest]
         openresty: [1.27.1.1]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Build OpenResty
         uses: ./
         with:
           version: ${{ matrix.openresty }}
           opt: --without-stream
       - name: Checkout lua-resty lib
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: openresty/lua-resty-lrucache
           path: lua-resty-lib

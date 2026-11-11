@@ -25,6 +25,10 @@ When successful, this action updates `$PATH` to include the `nginx` binary at
 The resulting OpenResty build will only include OpenSSL if the `openssl-version`
 input is given.
 
+The runner must provide a C toolchain, zlib, and PCRE development libraries
+(all `ubuntu-*` and `macos-*` GitHub runner images do, including the
+forthcoming Ubuntu 26 image).
+
 It also installs the
 [Test::Nginx::Socket](https://metacpan.org/pod/Test%3A%3ANginx%3A%3ASocket)
 framework via [cpanminus](https://github.com/miyagawa/cpanminus) and updates

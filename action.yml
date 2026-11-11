@@ -35,5 +35,5 @@ inputs:
     type: boolean
     default: true
 runs:
-  using: 'node12'
+  using: 'node20'
   main: 'src/index.js'
