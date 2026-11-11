@@ -34,6 +34,12 @@ async function setup_openresty(openresty_version) {
         let pcre_version = "8.45"
         let pcre_url = `${PCRE_HOST}/pcre-${pcre_version}.tar.gz`
         pcre_src = await download("PCRE", pcre_url, pcre_version)
+
+        /* the release tarball carries stale autotools timestamps, which
+         * makes make try to regenerate aclocal.m4 with aclocal (absent on
+         * runners): mark the generated files as up-to-date */
+        await sh(`cd ${pcre_src} && touch configure.ac aclocal.m4 \
+                       configure Makefile.in config.h.in`)
     }
 
     return { openresty_src, pcre_src }
