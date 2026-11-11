@@ -22,8 +22,10 @@ async function main() {
         let openresty_version = core.getInput("version", { required: true })
         let openresty_prefix = path.join(process.env.GITHUB_WORKSPACE, "openresty", openresty_version)
 
-        let openresty_src = await openresty.setup(openresty_version)
-        await openresty.build(openresty_version, openresty_src, openresty_prefix, openssl_src)
+        let res = await openresty.setup(openresty_version)
+        await openresty.build(openresty_version, res.openresty_src,
+                              openresty_prefix, openssl_src,
+                              res.pcre_src)
 
         core.addPath(path.join(`${openresty_prefix}`, "bin"))
         core.addPath(path.join(`${openresty_prefix}`, "nginx", "sbin"))

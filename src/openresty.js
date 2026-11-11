@@ -4,10 +4,20 @@ const { sh, download } = require("./tools")
 const { DIR_WORK, NPROC } = require("./constants")
 
 const OPENRESTY_HOST="https://openresty.org"
+const PCRE_HOST="https://ftp.exim.org/pub/pcre"
 const DIR_BUILD = path.join(DIR_WORK, "build")
 
 async function setup_openresty(openresty_version) {
     let openresty_src
+    let pcre_src
+
+    let arr = openresty_version.match(/(?<maj>\d+)\.(?<min>\d+)\.(?<patch>\d+)\.(?<suffix>\d+)/)
+    if (!arr) {
+        throw new Error(`Failed parsing OpenResty version (${openresty_version})`)
+    }
+
+    let maj = parseInt(arr.groups.maj, 10)
+    let min = parseInt(arr.groups.min, 10)
 
     try {
         let openresty_url = `${OPENRESTY_HOST}/download/openresty-${openresty_version}.tar.gz`
@@ -17,10 +27,19 @@ async function setup_openresty(openresty_version) {
         return core.setFailed(`Failed building OpenResty: ${e}`)
     }
 
-    return openresty_src
+    if (maj == 1 && min < 27) {
+        /* old nginx versions only link against PCRE1, which recent runner
+         * images no longer ship: fetch the PCRE1 sources so the nginx build
+         * can compile PCRE statically from them */
+        let pcre_version = "8.45"
+        let pcre_url = `${PCRE_HOST}/pcre-${pcre_version}.tar.gz`
+        pcre_src = await download("PCRE", pcre_url, pcre_version)
+    }
+
+    return { openresty_src, pcre_src }
 }
 
-async function build_openresty(openresty_version, openresty_src, openresty_prefix, openssl_src) {
+async function build_openresty(openresty_version, openresty_src, openresty_prefix, openssl_src, pcre_src) {
     let configure_opt = core.getInput("opt")
     let with_cc = core.getInput("cc")
     let with_cc_opt = core.getInput("cc-opt")
@@ -97,8 +116,10 @@ async function build_openresty(openresty_version, openresty_src, openresty_prefi
         /* PCRE is only enabled when the rewrite module is enabled, and
          * lua-resty-core requires the ngx_http_lua_ffi_pcre_version symbol
          * which is only compiled when PCRE is: force PCRE usage so that
-         * ngx.re works and resty.core loads */
-        configure_cmd.push("--with-pcre")
+         * ngx.re works and resty.core loads. Old nginx versions only link
+         * PCRE1, which recent runner images no longer ship: build the PCRE1
+         * sources fetched by setup() instead */
+        configure_cmd.push(`--with-pcre=${pcre_src}`)
     }
 
     await sh(configure_cmd.join(" "), { cwd: openresty_src })
