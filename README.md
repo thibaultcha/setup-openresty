@@ -15,7 +15,7 @@ libraries CI/CD workflows.
 - name: Setup OpenResty
   uses: thibaultcha/setup-openresty@main
   with:
-    version: 1.19.9.1
+    version: 1.31.8.1
 ```
 
 When successful, this action updates `$PATH` to include the `nginx` binary at
@@ -38,7 +38,7 @@ framework via [cpanminus](https://github.com/miyagawa/cpanminus) and updates
 
 Name                    |  Type  | Default | Description
 -----------------------:|:------:|:-------:|:-----------
-`version` (required)    | string |         | OpenResty version (e.g. `1.19.9.1`)
+`version` (required)    | string |         | OpenResty version (e.g. `1.31.8.1`)
 `opt`                   | string |         | Configuration options (`./configure [opt...]`)
 `cc`                    | string |         | Compiler (`--with-cc`)
 `cc-opt`                | string | -g      | Compiler options (`--with-cc-opt`)
@@ -81,7 +81,7 @@ OpenResty with TLS:
   uses: thibaultcha/setup-openresty@main
   with:
     version: ${{ matrix.openresty }}
-    openssl-version: 1.1.1l
+    openssl-version: 3.4.1
 ```
 
 OpenResty without TLS and without the streaming module:
